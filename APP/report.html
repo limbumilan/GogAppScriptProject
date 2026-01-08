@@ -1,0 +1,86 @@
+<!-- Link your stylesheet -->
+
+
+
+<div class="card">
+  <h3 class="card-title">Reports</h3>
+
+  <!-- Search bars -->
+  <div class="search-container">
+    <input type="text" id="applicantSearch" placeholder="Search by applicant ID" class="myInput"/>
+    <button onclick="search('applicant')" class="myButton">Search</button>
+
+    <input type="text" id="licenseSearch" placeholder="Search by License No" class="myInput"/>
+    <button onclick="search('license')" class="myButton">Search</button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper">
+    <table id="reportsTable" class="table">
+      <thead>
+        <tr>
+          <th>Applicant ID</th>
+          <th>Name</th>
+          <th>Contact No</th>
+          <th>License No</th>
+          <th>Category</th>
+          <th>Sent Date</th>
+          <th>Verified</th>
+          <th>Verification Date</th>
+          <th>Receiver Details</th>
+          <th>Receiver Contact</th>
+          <th>Received Date</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function loadReports(searchTerm = '', searchBy = '') {
+  google.script.run.withSuccessHandler(renderReports)
+    .getReportsData(searchTerm, searchBy);
+}
+
+function renderReports(data) {
+  const tbody = document.querySelector('#reportsTable tbody');
+  let html = '';
+
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="11">No records found</td></tr>';
+    return;
+  }
+
+  data.forEach(r => {
+    html += `<tr>
+      <td>${r.applicantId}</td>
+      <td> ${r.givenName} ${r.surname}</td>
+      <td>${r.contactNo}</td>
+      <td>${r.licenseNo}</td>
+      <td>${r.category}</td>
+      <td>${r.sentDate}</td>
+      <td>${r.verified ? 'Yes' : 'No'}</td>
+      <td>${r.dateOfVerification}</td>
+      <td>${r.receiverDetails}</td>
+      <td>${r.receiverContactInfo}</td>
+      <td>${r.receivedDate}</td>
+    </tr>`;
+  });
+
+  tbody.innerHTML = html;
+}
+
+function search(type) {
+  if(type === 'applicant') {
+    const term = document.getElementById('applicantSearch').value;
+    loadReports(term, 'applicant');
+  } else if(type === 'license') {
+    const term = document.getElementById('licenseSearch').value;
+    loadReports(term, 'license');
+  }
+}
+
+// Auto-load all reports on page load
+window.onload = () => loadReports();
+</script>
