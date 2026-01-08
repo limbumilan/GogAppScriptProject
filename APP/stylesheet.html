@@ -1,0 +1,421 @@
+<style>
+/* =======================
+   BASE (OLD – UNCHANGED)
+   ======================= */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: #f4f6f8;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  height: 100vh;
+  transition: grid-template-columns 0.3s ease;
+}
+
+/* =======================
+   SIDEBAR
+   ======================= */
+.sidebar {
+  background: #1a73e8;
+  color: #fff;
+  width: 240px;
+  padding: 0;
+  position: relative;
+  transition: width 0.3s ease;
+  overflow: visible;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+}
+
+/* Toggle */
+.sidebar-toggle {
+  padding: 14px;
+  font-size:0.85em;
+  text-align: right;
+  cursor: pointer;
+  border-bottom: 0.2px solid rgba(255,255,255,0.25);
+  border-radius:00.2px
+}
+
+/* Nav   ======================================================== */
+.nav {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: right;
+  gap: 14px;
+  padding: 14px;
+  cursor: pointer;
+  color: white;
+}
+
+.nav-item:hover{ background: rgba(255,255,255,0.15);
+}}
+.nav-item.active {
+  background: rgba(255,255,255,0.2);
+}
+
+.nav-item.has-dropdown .entry-submenu {
+  display:none;
+  margin-left: 100px;          /* appear directly below parent *           /* hidden by default */
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  /*position: relative;*/
+  
+}
+
+
+/* Icons */
+.material-icons, .material-symbols-outlined {
+  font-size: 24px;
+  min-width: 24px;
+}
+
+.label {
+  white-space: nowrap;
+}
+
+/* Hide labels when collapsed */
+.sidebar.collapsed .label {
+  display: none;
+}
+
+/* Tooltip (collapsed only) */
+.sidebar.collapsed .nav-item::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 70px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #111;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s;
+} 
+
+.sidebar.collapsed .nav-item:hover::after {
+  opacity: 1;
+}
+
+.sidebar:not(.collapsed) .nav-item.has-dropdown .entry-submenu {
+  display: none;
+  flex-direction: column;
+  margin: 0;                /* no offset */
+  padding-left: 0;          /* align with parent */
+  width: 100%;              /* span full width of parent <li> */
+}
+
+.sidebar:not(.collapsed) .nav-item.has-dropdown.active .entry-submenu {
+  display: flex;
+  
+}
+
+/* =======================
+   SUBMENU INLINE (EXPANDED)
+   ======================= */
+.entry-submenu {
+  margin-left: 20px;
+  font-size: 0.85em;
+  display: none;
+  flex-direction: column;
+  max-height: 0;
+  gap: 4px;
+  overflow: hidden; 
+  transition: max-height 0.99s ease;
+}
+
+.nav-item.has-dropdown.active .entry-submenu {
+  display: flex;
+}
+
+.entry-submenu li {
+  list-style: none;
+  padding: 6px 14px;
+  cursor: pointer;
+  color: #fff;
+  font-size: 0.9em;
+  text-decoration: none;
+  transition: background 0.6s ease;
+}
+
+.entry-submenu li:hover {
+  color: #1a73e8;
+}
+.entry-submenu li::before {
+  content: '';
+  position: absolute;
+  left: 0px;
+  top: 0;
+  width: 0px;
+  height: 100%;
+  background-color: #1a73e8;
+  border-radius: 2px;
+}
+.entry-submenu li::after {
+         /* arrow symbol */
+  position: relative;
+  right: 0px;            /* align to right */
+  color: #fff;
+  font-size: 25px;
+}
+/* =======================
+   FLOATING DROPDOWN (COLLAPSED)
+   ======================= */
+.click-dropdown .entry-submenu {
+  display: none;
+}
+.sidebar:not(.collapsed) .nav-item.has-dropdown > span {
+  display: flex;
+  align-items: right;
+  gap: 10px;              /* space between icon & label */
+  width: 100%;
+}
+sidebar.collapsed .click-dropdown .entry-submenu {
+  display: none;
+  position: absolute;
+  left: 20px;              /* outside sidebar */
+  top: 0;                  /* align via JS */
+  background: #fff;
+  color: #111;
+  min-width: 18px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  padding: 0px 0;
+  flex-direction: column;
+  z-index: 3000;
+}
+
+.sidebar.collapsed .click-dropdown.open .entry-submenu {
+   display: none;
+  position: absolute;
+  left: 0px;
+  top: 0;               /* can adjust dynamically via JS */
+  background: #fff;
+  color: #111;
+  min-width: 180px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  padding: 8px 0;
+  flex-direction: column;
+  z-index: 3000;
+ 
+}
+
+.sidebar.collapsed .click-dropdown.open .entry-submenu li {
+  color: #111;
+  padding: 8px 14px;
+}
+
+.sidebar.collapsed .click-dropdown.open .entry-submenu li:hover {
+  background: #f1f5f9;
+}
+
+/* =======================
+   CLICK DROPDOWN (EXPANDED)
+   ======================= */
+.click-dropdown .icon-dropdown {
+  display: none;
+}
+.sidebar:not(.collapsed) .nav-item.has-dropdown {
+  display: flex;
+  flex-direction: column; /* stack children vertically */
+  align-items: flex-start; /* align icon+label to left */
+  position: relative;     /* for any future dropdown positioning */
+  gap: 0;                 /* optional */
+}
+.sidebar:not(.collapsed) .click-dropdown.open .icon-dropdown {
+  display: block;
+  position: static;
+  background: transparent;
+  box-shadow: none;
+  color: white;
+  margin-left: 38px;
+}
+
+.sidebar:not(.collapsed) .icon-dropdown li {
+  padding: 10px 0;
+  color: #e0e0e0;
+}
+
+.sidebar:not(.collapsed) .icon-dropdown li:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.sidebar:not(.collapsed) .nav-item.has-dropdown.active .entry-submenu {
+  max-height: 500px;  /* large enough to fit all child items */
+}
+
+
+.sidebar.collapsed .click-dropdown .entry-submenu {
+  display: none;
+  position: absolute;
+  left: 64px;              /* outside sidebar */
+  top: 0;                   /* JS will adjust top dynamically */
+  background: #fff;
+  color: #111;
+  min-width: 180px;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  padding: 8px 0;
+  flex-direction: column;
+  z-index: 3000;
+  transition: max-height 0.6s ease;
+}
+
+/* Show floating submenu when parent is open */
+.sidebar.collapsed .click-dropdown.open .entry-submenu {
+  display: flex;
+}
+
+/* Floating submenu items */
+.sidebar.collapsed .click-dropdown.open .entry-submenu li {
+  color: #111;
+  padding: 8px 14px;
+}
+
+.sidebar.collapsed .click-dropdown.open .entry-submenu li:hover {
+  background: #f1f5f9;
+}
+
+.sidebar.collapsed .click-dropdown.open .entry-submenu {
+  max-height: 500px; /* same sliding effect */
+  transition: max-height 0.3s ease;
+}
+
+/* =======================
+   BOTTOM NAV
+   ======================= */
+.nav-bottom {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  border-top: 1px solid rgba(255,255,255,0.25);
+  padding-bottom: 8px;
+}
+
+.nav-item.logout a {
+  color: inherit;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+/* =======================
+   MAIN CONTENT
+   ======================= */
+.main {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Topbar */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+/* Cards */
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+/* KPI */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.kpi h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.kpi h2 {
+  margin: 8px 0 0;
+  font-size: 28px;
+  color: #1a73e8;
+}
+
+/* Charts */
+.charts {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 12px;
+  border-bottom: 1.5px solid #eee;
+  font-size: 14px;
+}
+
+th {
+  background: #fafafa;
+  text-align: left;
+}
+
+/* =======================
+   MOBILE AUTO COLLAPSE
+   ======================= */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 64px;
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+  'FILL' 0,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 24;
+  'font-size': 40px;
+}
+
+
+
+</style>
