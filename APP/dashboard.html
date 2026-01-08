@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+
+  <!-- Google Charts -->
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <!-- Google Icons & Fonts -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=chevron_left" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+  <!-- External Stylesheet -->
+  <?!= include('stylesheet') ?>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ========================
+       SIDEBAR
+       ======================== -->
+  <aside class="sidebar collapsed" id="sidebar">
+
+    <!-- TOGGLE BUTTON -->
+    <div class="sidebar-toggle" onclick="toggleSidebar()">
+      <span class="material-symbols-outlined">chevron_left</span>
+    </div>
+
+    <!-- TOP NAV -->
+    <ul class="nav nav-top">
+
+      <!-- Dashboard -->
+      <li class="nav-item active" data-tooltip="Dashboard" onclick="activate(this); showTab('dashboardTab')">
+        <span class="material-icons">dashboard</span>
+        <span class="label">Dashboard</span>
+      </li>
+
+      <!-- Reports (Click Dropdown) -->
+      <li class="nav-item has-dropdown click-dropdown"  onclick="toggleDropdown(event, this)">
+        <span class="material-icons">bar_chart</span>
+        <span class="label">Reports</span>
+        <ul class="entry-submenu">
+          <li onclick="showTab('reportsTab')">All Reports</li>
+          <li onclick="showTab('reportsTab')">General Report</li>
+        </ul>
+      </li>
+
+      <!-- Entry Submenu -->
+      <li class="nav-item has-dropdown click-dropdown"  onclick="toggleDropdown(event, this)" >
+        <span class="material-icons">edit</span>
+        <span class="label">Entry</span>
+        <ul class="entry-submenu">
+          <li onclick="loadPage( event)">Add New</li>
+          <li onclick="openEntry('addNew')">Edit</li>
+        </ul>
+      </li>
+
+    </ul>
+
+    <!-- BOTTOM NAV -->
+    <ul class="nav nav-bottom">
+      <li class="nav-item" data-tooltip="Settings" onclick="alert('Settings coming soon')">
+        <span class="material-icons">settings</span>
+        <span class="label">Settings</span>
+      </li>
+
+      <li class="nav-item logout" data-tooltip="Logout">
+        <a href="<?= webAppUrl ?>?v=login">
+          <span class="material-icons">logout</span>
+          <span class="label">Logout</span>
+        </a>
+      </li>
+  
+  </aside>
+
+  <!-- ========================
+       MAIN CONTENT
+       ======================== -->
+  <main class="main">
+
+    <!-- DASHBOARD TAB -->
+    <div id="dashboardTab">
+      <div class="topbar">
+        <h2>Overview</h2>
+        <span>👤 Admin</span>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="kpis">
+        <div class="card kpi">
+          <h3>Total Cards Printed</h3>
+          <h2 id="totalRecords">–</h2>
+        </div>
+        <div class="card kpi">
+          <h3>Total Unprinted Cards</h3>
+          <h2 id="totalCategories">–</h2>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="charts">
+        <div class="card">
+          <h3>Applications by Category</h3>
+          <div id="categoryChart" style="height:300px;"></div>
+        </div>
+        <div class="card">
+          <h3>Applications by Date</h3>
+          <div id="dateChart" style="height:300px;"></div>
+        </div>
+      </div>
+
+      <!-- Recent Applications Table -->
+      <div class="card">
+        <h3>Recent Applications</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Contact</th>
+              <th>Verified</th>
+            </tr>
+          </thead>
+          <tbody id="dataTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTS TAB -->
+    <div id="reportsTab" style="display:none;">
+      <?!= include('report') ?>
+      
+    </div>
+    <!-- entrytab -->
+
+
+  </main>
+
+</div>
+
+<!-- ========================
+     JAVASCRIPT
+     ======================== -->
+<script>
+/* =======================
+   SIDEBAR COLLAPSE STATE
+   ======================= */
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const app = document.querySelector('.app');
+
+  sb.classList.toggle('collapsed');
+  const collapsed = sb.classList.contains('collapsed');
+
+  // Store state
+  localStorage.setItem('sidebarCollapsed', collapsed);
+
+  // Adjust grid
+  if(collapsed){
+    app.style.gridTemplateColumns = '60px 1fr'; // sidebar collapsed
+  } else {
+    app.style.gridTemplateColumns = '240px 1fr'; // sidebar expanded
+  }
+}
+
+// On page load, apply saved state
+(function(){
+  const sb = document.getElementById('sidebar');
+  const app = document.querySelector('.app');
+  const collapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+  if(collapsed){
+    sb.classList.add('collapsed');
+    app.style.gridTemplateColumns = '60px 1fr';
+  } else {
+    app.style.gridTemplateColumns = '240px 1fr';
+  }
+})();
+
+
+/* =======================
+   DROPDOWN LOGIC
+   ======================= */
+function toggleDropdown(event, el) {
+  event.stopPropagation();
+  const sidebar = document.getElementById('sidebar');
+
+  // Close other dropdowns
+  document.querySelectorAll('.click-dropdown').forEach(d => {
+    if (d !== el) {
+      d.classList.remove('open');
+      d.classList.remove('active');
+    }
+  });
+
+  // Toggle current dropdown
+  if (sidebar.classList.contains('collapsed')) {
+    // Collapsed → floating
+    el.classList.toggle('open');
+    el.classList.remove('active'); // no inline submenu
+  } else {
+    // Expanded → inline submenu
+    el.classList.toggle('active');
+    el.classList.remove('open'); // not floating
+  }
+}
+
+// Close all floating dropdowns when clicking outside
+document.addEventListener('click', () => {
+  document.querySelectorAll('.click-dropdown').forEach(d => {
+    d.classList.remove('open');
+  });
+});
+
+
+
+
+/* =======================
+   ACTIVE TAB HIGHLIGHT
+   ======================= */
+
+function openEntry(subTab) {
+  showTab('reportsTab');
+  showEntrySubTab(subTab);
+}
+
+
+function activate(el){
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* =======================
+   GOOGLE CHARTS + DASHBOARD LOGIC
+   ======================= */
+google.charts.load('current', {'packages':['corechart']});
+google.charts.setOnLoadCallback(loadDashboard);
+
+function showTab(tab) {
+  document.getElementById('dashboardTab').style.display = tab === 'dashboardTab' ? 'block' : 'none';
+  document.getElementById('reportsTab').style.display = tab === 'reportsTab' ? 'block' : 'none';
+  if(tab === 'reportsTab') loadReports();
+  
+}
+function showEntrySubTab(subTab) {
+  const addNew = document.getElementById('addNewContent');
+  const edit = document.getElementById('editContent');
+
+  if(subTab === 'addNew') {
+    addNew.style.display = 'block';
+    edit.style.display = 'none';
+  } else {
+    addNew.style.display = 'none';
+    edit.style.display = 'block';
+  }
+}
+ 
+function loadDashboard() {
+  google.script.run.withSuccessHandler(renderDashboard).getDashboardData();
+}
+
+function renderDashboard(data) {
+  document.getElementById('totalRecords').textContent = data.totalRecords;
+  document.getElementById('totalCategories').textContent = Object.keys(data.categories).length;
+
+  // Category Chart
+  const catData = [['Category','Count']];
+  Object.entries(data.categories).forEach(([k,v])=>catData.push([k,v]));
+  new google.visualization.PieChart(document.getElementById('categoryChart'))
+    .draw(google.visualization.arrayToDataTable(catData), {pieHole:0.4});
+
+  // Date Chart
+  const dateData = [['Date','Count']];
+  Object.entries(data.dateCounts).forEach(([k,v])=>dateData.push([k,v]));
+  new google.visualization.ColumnChart(document.getElementById('dateChart'))
+    .draw(google.visualization.arrayToDataTable(dateData), {legend:'none'});
+
+  // Recent Applications Table
+  const tbody = document.getElementById('dataTable');
+  tbody.innerHTML='';
+  data.table.slice(0,10).forEach(r=>{
+    tbody.innerHTML+=`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}</td></tr>`;
+  });
+
+
+
+
+
+
+}
+function loadPage(page, event) {
+  event.stopPropagation();
+
+  alert('JS OK → requesting: ' + page);
+
+  google.script.run
+    .withSuccessHandler(function(html) {
+      alert('SERVER RESPONDED');
+      document.getElementById('main-content').innerHTML = html;
+    })
+    .withFailureHandler(function(err) {
+      alert('SERVER ERROR:\n' + err.message);
+    })
+    .loadPage(page);
+}
+
+
+
+
+</script>
+</body>
+</html>
