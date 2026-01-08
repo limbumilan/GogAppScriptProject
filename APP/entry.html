@@ -1,0 +1,52 @@
+<!-- ENTRY TAB -->
+<div id="entryTab" style="display:none;">
+  <div class="topbar">
+    <h2>Entry</h2>
+    <span>👤 Admin</span>
+  </div>
+
+  <!-- Sub-tabs styled like topbar tabs -->
+  <div class="entry-subtabs">
+    <a class="active" onclick="showEntrySubTab('addNew')">
+      <span class="material-icons">person_add</span> Add New
+    </a>
+    <a onclick="showEntrySubTab('edit')">
+      <span class="material-icons">edit</span> Edit
+    </a>
+  </div>
+
+  <!-- Content for sub-tabs -->
+  <div id="addNewContent" class="entry-content">
+    <div class="card">
+      <h3>Add New Entry</h3>
+      <form id="addNewForm">
+        <label>Applicant ID:</label>
+        <input type="text" name="applicantId" />
+
+        <label>Name:</label>
+        <input type="text" name="name" />
+
+        <label>License No:</label>
+        <input type="text" name="licenseNo" />
+
+        <label>Contact:</label>
+        <input type="text" name="contact" />
+
+        <button type="submit" class="myButton">Submit</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="editContent" class="entry-content" style="display:none;">
+    <div class="card">
+      <h3>Edit Existing Entry</h3>
+      <form id="editForm">
+        <label>Search by Applicant ID:</label>
+        <input type="text" name="searchId" />
+        <button type="button" class="myButton" onclick="searchEntry()">Search</button>
+
+        <div id="editResults"></div>
+      </form>
+    </div>
+  </div>
+</div>
