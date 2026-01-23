@@ -1,0 +1,281 @@
+<!-- ========================= ADD NEW FORM (addnew.html) ========================= -->
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Update Receiver Info</title>
+</head>
+<body>
+
+<div class="topbar">
+  <h2>Update Receiver Info</h2>
+  <span>👤 <strong id="displayUser">Loading...</strong></span>
+</div>
+
+<!-- Search bar -->
+<div class="search-bar">
+  <input type="text" id="searchApplicantIdaddnew" placeholder="Search by Applicant ID" class="search-input">
+  <input type="text" id="searchLicenseNoaddnew" placeholder="Search by License No" class="search-input">
+  <button class="search-btn" onclick="searchExistingaddnew()">Search</button>
+   <button class="search-btn" onclick="resetFiltersaddnew()">Reset</button>
+</div>
+
+<!-- Search results table -->
+<table id="searchResultsaddnew" class="search-results">
+  <thead>
+    <tr>
+      <th>Applicant ID</th>
+      <th>Surname</th>
+      <th>Given Name</th>
+      <th>License No</th>
+    </tr>
+  </thead>
+  <tbody id="foraddnew"></tbody>
+</table>
+
+<!-- Form container -->
+<div class="addnew-form-container">
+  <form id="addNewForm">
+    <input type="hidden" name="enteredBy" id="addnew_enteredBy">
+
+    <!-- Non-editable fields -->
+    <fieldset class="fieldset-disabled">
+      <legend>Application Info</legend>
+      <div class="form-row">
+        <label>Applicant ID<input type="text" name="applicantID" class="form-input" readonly></label>
+        <label>Surname<input type="text" name="surname" class="form-input" readonly></label>
+      </div>
+      <div class="form-row">
+        <label>Given Name<input type="text" name="givenName" class="form-input" readonly></label>
+        <label>Contact No<input type="text" name="contactNo" class="form-input" readonly></label>
+      </div>
+      <div class="form-row">
+        <label>Driving License No<input type="text" name="licenseNo" class="form-input" readonly></label>
+        <label>Category<input type="text" name="category" class="form-input" readonly></label>
+      </div>
+      <div class="form-row">
+        <label>Sent Date<input type="date" name="sentDate" class="form-input" readonly></label>
+        <label>Verified<input type="text" name="verified" class="form-input" readonly></label>
+      </div>
+      <div class="form-row">
+        <label>Date of Verification<input type="date" name="dateOfVerification" class="form-input" readonly></label>
+        <label>Comments<textarea name="comments" rows="2" class="form-input" readonly></textarea></label>
+      </div>
+    </fieldset>
+
+    <!-- Editable receiver info -->
+    <fieldset class="fieldset-editable">
+      <legend>Receiver Info</legend>
+      <div class="form-row">
+        <label>Receiver Details<input type="text" name="receiverDetails" class="form-input"></label>
+        <label>Receiver Contact Info<input type="text" name="receiverContact" class="form-input"></label>
+      </div>
+      
+      <div class="form-row">
+        <label>Received
+       <input type="date" name="received" id="receivedDateInput" class="form-input"></label>
+       
+      </div>
+    </fieldset>
+
+    <!-- Save button -->
+    <div class="form-actions">
+      <button type="button" onclick="submitAddNew()">Save</button>
+    </div>
+  </form>
+</div>
+
+<style>
+/* Topbar */
+.topbar {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:15px; border-bottom:1px solid #e5e7eb; padding-bottom:10px;
+}
+
+/* Search bar */
+.search-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+.search-input{flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
+.search-btn{padding:8px 16px;background:#4f46e5;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer}
+.search-btn:hover{background:#4338ca}
+
+/* Search results */
+.search-results{width:100%;border-collapse:collapse;margin-bottom:15px;display:none}
+.search-results th,.search-results td{border:1px solid #e5e7eb;padding:6px 10px;font-size:13px}
+.search-results tbody tr:hover{background:#e0e7ff;cursor:pointer}
+
+/* Form container */
+.addnew-form-container{background:#fff;border-radius:12px;padding:15px 20px;box-shadow:0 4px 12px rgba(0,0,0,.08);max-height:calc(100vh-150px);overflow-y:auto}
+
+/* Fields */
+fieldset{border:none;padding:0;margin-bottom:15px} 
+legend{font-size:16px;font-weight:600;color:#4f46e5;margin-bottom:8px} 
+label{display:flex;flex-direction:column;font-size:14px;font-weight:500;margin-bottom:10px;color:#374151} 
+.form-input{padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;font-size:14px} 
+.form-input:focus{border-color:#4f46e5;outline:none;background:#fff} 
+.fieldset-editable{background:#f3f4f6;padding:12px 15px;border-radius:10px} 
+.fieldset-disabled{opacity:.95;}
+
+/* Row layout */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* View-only inputs */
+.fieldset-disabled .form-input{border:none;background:transparent;padding:2px 0;pointer-events:none;font-weight:600;color:#111827}
+
+/* Button */
+.form-actions{display:flex;justify-content:flex-end}
+.form-actions button{background:#4f46e5;color:#fff;padding:8px 18px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.form-actions button:hover{background:#4338ca}
+</style>
+
+
+<script>
+
+
+
+
+let currentResultsAddnew = [];
+
+// 1. Initial Sync & Today's Date
+function setTodayDate() {
+  const dateInput = document.getElementById('receivedDateInput');
+  if (dateInput) {
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+  }
+}
+
+function syncUserAddnew() {
+  const displayElement = document.getElementById('displayUser');
+  const hiddenInput = document.getElementById('addnew_enteredBy');
+
+  if (typeof LOGGED_IN_USER !== 'undefined') {
+    if(displayElement) displayElement.innerText = LOGGED_IN_USER;
+    if(hiddenInput) hiddenInput.value = LOGGED_IN_USER;
+    setTodayDate(); 
+  } else {
+    setTimeout(syncUserAddnew, 100);
+  }
+}
+
+// 2. Search & Fill
+function searchExistingaddnew() {
+  const applicantId = document.getElementById('searchApplicantIdaddnew').value.trim();
+  const licenseNo = document.getElementById('searchLicenseNoaddnew').value.trim();
+  if(!applicantId && !licenseNo) return alert('Enter Applicant ID or License No');
+
+  google.script.run
+    .withSuccessHandler(results => {
+      currentResultsAddnew = results || [];
+      if(!currentResultsAddnew.length) return alert('No records found');
+      showSearchResultsAddnew();
+    })
+    .getReportsData(applicantId || licenseNo, applicantId ? 'applicant' : 'license');
+}
+
+function showSearchResultsAddnew() {
+  const tbody = document.getElementById('foraddnew');
+  const table = document.getElementById('searchResultsaddnew');
+  tbody.innerHTML = '';
+  currentResultsAddnew.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.applicantId}</td><td>${r.surname}</td><td>${r.givenName}</td><td>${r.licenseNo}</td>`;
+    tr.onclick = () => fillFormAddnew(r);
+    tbody.appendChild(tr);
+  });
+  table.style.display = 'table';
+}
+
+function fillFormAddnew(data){
+  const f = document.getElementById('addNewForm');
+  const saveBtn = document.querySelector('.form-actions button');
+  
+  // Fill Fields
+  f.applicantID.value = data.applicantId || '';
+  f.surname.value = data.surname || '';
+  f.givenName.value = data.givenName || '';
+  f.contactNo.value = data.contactNo || '';
+  f.licenseNo.value = data.licenseNo || '';
+  f.category.value = data.category || '';
+  f.sentDate.value = data.sentDate || '';
+  
+  // Verification check
+  const isVerified = String(data.verified).toUpperCase() === "TRUE";
+  f.verified.value = isVerified ? 'TRUE' : 'NOT VERIFIED';
+  f.dateOfVerification.value = data.dateOfVerification || '';
+  f.comments.value = data.comments || '';
+  
+  // Received check
+  const alreadyReceived = (data.receivedDate && data.receivedDate !== "");
+  f.receiverDetails.value = data.receiverDetails || '';
+  f.receiverContact.value = data.receiverContactInfo || '';
+  f.received.value = alreadyReceived ? data.receivedDate : new Date().toISOString().split('T')[0];
+
+  // --- BLOCKING LOGIC ---
+  if (!isVerified) {
+    alert("🛑 BLOCK: This application cannot be processed because it has NOT been verified yet.");
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Verification Required";
+    saveBtn.style.background = "#ef4444"; // Red
+  } else if (alreadyReceived) {
+    alert("🛑 BLOCK: This application was already received on " + data.receivedDate);
+    saveBtn.disabled = true;
+    saveBtn.innerText = "Already Received";
+    saveBtn.style.background = "#9ca3af"; // Gray
+  } else {
+    saveBtn.disabled = false;
+    saveBtn.innerText = "Save";
+    saveBtn.style.background = "#4f46e5"; // Normal Blue
+  }
+
+  document.getElementById('searchResultsaddnew').style.display = 'none';
+}
+
+// 3. The Final Save Function
+function submitAddNew() {
+  const form = document.getElementById('addNewForm');
+  
+  // Safety check if user somehow bypasses disabled button
+  const isVerified = form.verified.value === "TRUE";
+  const receivedDate = form.received.value;
+  
+  if (!isVerified) {
+    return alert("Cannot save: Application is not verified.");
+  }
+
+  const data = Object.fromEntries(new FormData(form).entries());
+  data.enteredBy = LOGGED_IN_USER;
+
+  google.script.run
+    .withSuccessHandler(() => {
+      alert('Receiver details saved successfully!');
+      resetFiltersaddnew();
+    })
+    .withFailureHandler(err => alert('Error: ' + err.message))
+    .saveReceiverInfo(data);
+}
+
+// 4. Reset
+function resetFiltersaddnew() {
+  document.getElementById('searchApplicantIdaddnew').value = '';
+  document.getElementById('searchLicenseNoaddnew').value = '';
+  document.getElementById('searchResultsaddnew').style.display = 'none';
+  
+  const form = document.getElementById('addNewForm');
+  if (form) {
+    form.reset();
+    syncUserAddnew(); 
+  }
+}
+
+// Start
+syncUserAddnew();
+</script>
+
+
+
+
+
+
+
+</body>
+</html>
