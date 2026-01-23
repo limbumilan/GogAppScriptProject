@@ -150,6 +150,12 @@ function getDashboardData() {
   return { totalRecords, categories, verifiedCategory, dateCounts, table };
 }
 
+
+
+
+
+
+
 // ==========================
 // Test data
 // ==========================
@@ -170,6 +176,10 @@ function testData() {
     }
   ];
 }
+
+
+
+
 
 // ==========================
 // Receiver Info Page
@@ -213,6 +223,12 @@ function saveReceiverInfo(data) {
 
   return "Success";
 }
+
+
+
+
+
+
 
 // ==========================
 // Reports & Verification
@@ -280,10 +296,88 @@ function getReportsData(searchTerm = '', searchBy = '') {
   return results;
 }
 
+
+
+
+
+
+
 // ==========================
 // Excel Export
 // ==========================
+
 function getAllReportData(filters) {
+  try {
+    const ss = SpreadsheetApp.openByUrl(url);
+    const sheet = ss.getSheetByName("data");
+    if (!sheet) return [];
+
+    const data = sheet.getDataRange().getValues(); // read everything at once
+    if (data.length < 2) return [];
+
+    const headers = data[0].map(h => h.trim());
+    const rows = data.slice(1); // exclude headers
+
+    const safeDate = val => (val instanceof Date ? Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd") : String(val || ''));
+
+    // Map rows to objects once
+    let results = rows.map(row => {
+      return {
+        applicant_ID: String(row[headers.indexOf("applicant.ID.")] || ''),
+        SURNAME: String(row[headers.indexOf("SURNAME")] || ''),
+        GIVEN_NAME: String(row[headers.indexOf("GIVEN_NAME")] || ''),
+        CONTACT_NO: String(row[headers.indexOf("CONTACT_NO")] || ''),
+        DRIVING_LICENSE_NO: String(row[headers.indexOf("DRIVING_LICENSE_NO")] || ''),
+        CATEGORY: String(row[headers.indexOf("CATEGORY")] || ''),
+        SENT_DATE: safeDate(row[headers.indexOf("SENT DATE")]),
+        VERIFIED: String(row[headers.indexOf("VERIFIED")]).toUpperCase() === 'TRUE',
+        DATE_OF_VERIFICATION: safeDate(row[headers.indexOf("DATE OF VERIFICATION")]),
+        comments: String(row[headers.indexOf("comments")] || ''),
+        Reciever_details: String(row[headers.indexOf("Reciever details")] || ''),
+        reciever_contact_info: String(row[headers.indexOf("reciever_contact_info")] || ''),
+        recieved: safeDate(row[headers.indexOf("recieved")])
+      };
+    });
+
+    // =============================== Filters ===============================
+    if (filters) {
+      const { fromDate, toDate, verifiedStatus, applicantId, licenseNo } = filters;
+
+      if (verifiedStatus === 'true') results = results.filter(r => r.VERIFIED);
+      else if (verifiedStatus === 'false') results = results.filter(r => !r.VERIFIED);
+
+      if (fromDate || toDate) {
+        const start = fromDate ? new Date(fromDate).setHours(0,0,0,0) : null;
+        const end = toDate ? new Date(toDate).setHours(23,59,59,999) : null;
+
+        results = results.filter(r => {
+          const dateVal = verifiedStatus === 'true' ? r.DATE_OF_VERIFICATION : r.SENT_DATE;
+          const time = new Date(dateVal).getTime();
+          if (isNaN(time)) return false;
+          if (start && time < start) return false;
+          if (end && time > end) return false;
+          return true;
+        });
+      }
+
+      if (applicantId) results = results.filter(r => r.applicant_ID.toLowerCase().includes(applicantId.toLowerCase()));
+      if (licenseNo) results = results.filter(r => r.DRIVING_LICENSE_NO.toLowerCase().includes(licenseNo.toLowerCase()));
+    }
+
+    // Sort newest first
+    results.sort((a, b) => new Date(b.SENT_DATE).getTime() - new Date(a.SENT_DATE).getTime());
+
+    return results;
+  } catch (err) {
+    console.error("getAllReportData failed:", err);
+    return [];
+  }
+}
+
+
+
+
+function getAllReportDataold(filters) {
   try {
     const ss = SpreadsheetApp.openByUrl(url);
     const sheet = ss.getSheetByName("data");
@@ -352,6 +446,14 @@ function getAllReportData(filters) {
   }
 }
 
+
+
+
+
+
+
+
+
 // ==========================
 // Verification Page
 // ==========================
@@ -394,6 +496,10 @@ function verifyApplication(data) {
 
   return "Verification Successful";
 }
+
+
+
+
 
 // ==========================
 // Search for verification
@@ -457,3 +563,65 @@ function testVerifySearch() {
   results = getReportsDataverify(testLicenseNo, 'license');
   Logger.log(results);
 }
+
+
+///FOR EDIT PAGE//
+
+
+/**
+ * Updates an existing record in the "data" sheet
+ * based on applicant ID and provided form data.
+ */
+function saveEditedRecord(data) {
+  const sheet = MySheets.getSheetByName('data'); // Your data sheet
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+
+  // Find the row by applicant ID
+  const idColIndex = headers.indexOf("applicant.ID.");
+  if (idColIndex === -1) throw new Error("Column 'applicant.ID.' not found in sheet.");
+
+  const rowIndex = values.findIndex(r => String(r[idColIndex]) === String(data.applicantID));
+  if (rowIndex === -1) throw new Error("Applicant ID not found in database.");
+
+  const rowNumber = rowIndex + 1;
+
+  // Map your form fields to the sheet columns
+  const fieldMapping = {
+    "surname": "SURNAME",
+    "givenName": "GIVEN_NAME",
+    "contactNo": "CONTACT_NO",
+    "licenseNo": "DRIVING_LICENSE_NO",
+    "category": "CATEGORY",
+    "sentDate": "SENT DATE",
+    "verified": "VERIFIED",
+    "dateOfVerification": "DATE OF VERIFICATION",
+    "comments": "comments",
+    "receiverDetails": "Reciever details",
+    "receiverContact": "reciever_contact_info",
+    "receivedDate": "recieved"
+  };
+
+  // Loop through each mapping and update the sheet
+  for (let key in fieldMapping) {
+    const colName = fieldMapping[key];
+    const colIndex = headers.indexOf(colName);
+    if (colIndex > -1) {
+      let value = data[key];
+
+      // Optional: convert verified to TRUE/FALSE
+      if (key === "verified") {
+        value = (String(value).toUpperCase() === 'TRUE');
+      }
+
+      sheet.getRange(rowNumber, colIndex + 1).setValue(value);
+    }
+  }
+
+  return "Record updated successfully";
+}
+
+
+
+
+
