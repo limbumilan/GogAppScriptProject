@@ -42,7 +42,7 @@
         <span class="material-icons">bar_chart</span>
         <span class="label">Reports</span>
         <ul class="entry-submenu">
-          <li onclick="showTab('reportsTab')">All Reports</li>
+          <li onclick="showTab('allreportTab')">All Reports</li>
           <li onclick="showTab('reportsTab')">General Report</li>
         </ul>
       </li>
@@ -52,8 +52,9 @@
         <span class="material-icons">edit</span>
         <span class="label">Entry</span>
         <ul class="entry-submenu">
-          <li onclick="loadPage( event)">Add New</li>
-          <li onclick="openEntry('addNew')">Edit</li>
+          <li onclick="showTab( 'entryTab')">Add New</li>
+          <li onclick="showTab('editTab')">Edit</li>
+          <li onclick="showTab('verifyTab')">verify</li>
         </ul>
       </li>
 
@@ -84,7 +85,10 @@
     <div id="dashboardTab">
       <div class="topbar">
         <h2>Overview</h2>
-        <span>👤 Admin</span>
+        <div class="user-profile-trigger" onclick="toggleUserMenu()" style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+    <span>👤 <span id="display-name"><?= username ?></span></span>
+      </div>
+        
       </div>
 
       <!-- KPI Cards -->
@@ -134,12 +138,55 @@
       <?!= include('report') ?>
       
     </div>
-    <!-- entrytab -->
+    <!-- ADDNEW TAB -->
+    <div id="entryTab" style="display:none;">
+     <?!= include('addnew') ?>
+      
+    </div>
+
+    <!-- EDIT TAB -->
+    <div id="editTab" style="display:none;">
+  <?!= include('edit') ?>
+     </div>
+  <!-- VERIFY TAB -->
+  <div id="verifyTab" style="display:none;">
+  <?!= include('verify') ?>
+     </div>
+
+
+   <!-- GENERAL REPORT TAB -->
+<div id="allreportTab" style="display:none;">
+  <?!= include('allreport') ?>
+</div>
+
+
+
+
 
 
   </main>
 
 </div>
+
+
+<div id="passwordModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+  <div style="background:#fff; padding:25px; border-radius:12px; width:320px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+    <h3 style="margin-top:0; color:#4f46e5;">User Settings</h3>
+    <p style="font-size: 13px; color: #666;">Role: <strong id="userRoleBadge">Loading...</strong></p>
+    
+    <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+    
+    <label style="font-size:12px; font-weight:600;">Change Password</label>
+    <input type="password" id="newPassword" placeholder="Enter new password" style="width:100%; padding:10px; margin-top:5px; border:1px solid #ddd; border-radius:6px; box-sizing: border-box;">
+    
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+      <button onclick="closePasswordModal()" style="background:#f3f4f6; border:none; padding:8px 15px; border-radius:6px; cursor:pointer;">Cancel</button>
+      <button onclick="submitPasswordChange()" style="background:#4f46e5; color:#fff; border:none; padding:8px 15px; border-radius:6px; cursor:pointer;">Update</button>
+    </div>
+  </div>
+</div>
+
+
 
 <!-- ========================
      JAVASCRIPT
@@ -148,6 +195,98 @@
 /* =======================
    SIDEBAR COLLAPSE STATE
    ======================= */
+let USER_ROLE = "";
+
+// 1. Fetch user session and apply security on load
+window.addEventListener('load', function() {
+  google.script.run.withSuccessHandler(function(session) {
+    USER_ROLE = session.role; 
+    
+    // Update the UI badges
+    const roleBadge = document.getElementById('userRoleBadge');
+    if(roleBadge) roleBadge.innerText = USER_ROLE;
+    
+    console.log("Session Loaded. User:", session.username, "Role:", USER_ROLE);
+    
+    applyPermissions(USER_ROLE);
+  }).getUserSession();
+});
+
+function applyPermissions(role) {
+  // Convert to uppercase to prevent case-sensitivity issues
+  const userRole = (role || "").toUpperCase();
+  
+  const btnEdit = document.getElementById('nav-edit');
+  const btnVerify = document.getElementById('nav-verify');
+  const btnAddNew = document.getElementById('nav-addnew');
+
+  // Helper to safely set display
+  const setDisplay = (el, val) => { if(el) el.style.display = val; };
+
+  if (userRole === 'VERIFIER') {
+    setDisplay(btnEdit, 'none');
+    setDisplay(btnAddNew, 'none');
+    setDisplay(btnVerify, 'block');
+  } 
+  else if (userRole === 'DISTRIBUTOR') {
+    setDisplay(btnEdit, 'none');
+    setDisplay(btnVerify, 'none');
+    setDisplay(btnAddNew, 'block');
+  }
+  else if (userRole === 'ADMIN') {
+    setDisplay(btnEdit, 'block');
+    setDisplay(btnVerify, 'block');
+    setDisplay(btnAddNew, 'block');
+  } else {
+    // Unknown role: Hide everything sensitive for safety
+    setDisplay(btnEdit, 'none');
+    setDisplay(btnVerify, 'none');
+    setDisplay(btnAddNew, 'none');
+  }
+}
+
+// Security Wrapper for showTab
+function showTab(tabId) {
+  // Hard Security Check
+  if (tabId === 'editTab' && USER_ROLE !== 'ADMIN') {
+    alert("⛔ Access Denied: Administrator privileges required.");
+    return;
+  }
+  if (tabId === 'allreportTab' && USER_ROLE !== 'ADMIN') {
+    alert("⛔ Access Denied: Administrator privileges required.");
+    return;
+  }
+  
+  if (tabId === 'verifyTab' && (USER_ROLE !== 'ADMIN' && USER_ROLE !== 'VERIFIER')) {
+    alert("⛔ Access Denied: Verifier privileges required.");
+    return;
+  }
+
+  // 1. UI: Hide all tab content containers
+  const tabs = document.querySelectorAll('main > div');
+  tabs.forEach(tab => tab.style.display = 'none');
+
+  // 2. UI: Show the selected tab
+  const target = document.getElementById(tabId);
+  if (target) {
+    target.style.display = 'block';
+  }
+
+  // 3. LOGIC: Data Refresh
+  const tabActions = {
+    'dashboardTab': () => typeof loadDashboard === 'function' && loadDashboard(),
+    'reportsTab':   () => typeof loadReports === 'function' && loadReports(),
+    'allreportTab': () => typeof fetchAllReportData === 'function' && fetchAllReportData(),
+    'editTab':      () => typeof prepareEditTab === 'function' && prepareEditTab()
+  };
+
+  if (tabActions[tabId]) tabActions[tabId]();
+}
+
+
+
+
+const LOGGED_IN_USER = "<?= username ?>";
 function toggleSidebar() {
   const sb = document.getElementById('sidebar');
   const app = document.querySelector('.app');
@@ -221,10 +360,6 @@ document.addEventListener('click', () => {
    ACTIVE TAB HIGHLIGHT
    ======================= */
 
-function openEntry(subTab) {
-  showTab('reportsTab');
-  showEntrySubTab(subTab);
-}
 
 
 function activate(el){
@@ -238,28 +373,29 @@ function activate(el){
 google.charts.load('current', {'packages':['corechart']});
 google.charts.setOnLoadCallback(loadDashboard);
 
-function showTab(tab) {
-  document.getElementById('dashboardTab').style.display = tab === 'dashboardTab' ? 'block' : 'none';
-  document.getElementById('reportsTab').style.display = tab === 'reportsTab' ? 'block' : 'none';
-  if(tab === 'reportsTab') loadReports();
-  
-}
-function showEntrySubTab(subTab) {
-  const addNew = document.getElementById('addNewContent');
-  const edit = document.getElementById('editContent');
 
-  if(subTab === 'addNew') {
-    addNew.style.display = 'block';
-    edit.style.display = 'none';
-  } else {
-    addNew.style.display = 'none';
-    edit.style.display = 'block';
-  }
-}
- 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function loadDashboard() {
   google.script.run.withSuccessHandler(renderDashboard).getDashboardData();
 }
+
+
+
+
+
 
 function renderDashboard(data) {
   document.getElementById('totalRecords').textContent = data.totalRecords;
@@ -285,30 +421,71 @@ function renderDashboard(data) {
   });
 
 
-
-
-
-
 }
-function loadPage(page, event) {
-  event.stopPropagation();
 
-  alert('JS OK → requesting: ' + page);
+
+
+
+
+
+//passwordchaNGE//
+
+
+
+
+
+
+
+
+
+
+
+
+// 2. Password Modal Functions
+function toggleUserMenu() {
+  document.getElementById('passwordModal').style.display = 'block';
+}
+
+function closePasswordModal() {
+  document.getElementById('passwordModal').style.display = 'none';
+  document.getElementById('newPassword').value = '';
+}
+
+function submitPasswordChange() {
+  const newPass = document.getElementById('newPassword').value;
+  if (!newPass) return alert("Please enter a new password.");
+
+  const btn = event.target;
+  btn.disabled = true;
+  btn.innerText = "Updating...";
 
   google.script.run
-    .withSuccessHandler(function(html) {
-      alert('SERVER RESPONDED');
-      document.getElementById('main-content').innerHTML = html;
+    .withSuccessHandler(() => {
+      alert("Password updated successfully!");
+      closePasswordModal();
+      btn.disabled = false;
+      btn.innerText = "Update";
     })
-    .withFailureHandler(function(err) {
-      alert('SERVER ERROR:\n' + err.message);
+    .withFailureHandler((err) => {
+      alert("Error: " + err.message);
+      btn.disabled = false;
     })
-    .loadPage(page);
+    .updateUserPassword(newPass);
 }
 
-
-
+// 3. Security Wrapper for showTab
+// Prevents users from manually calling showTab('editTab') in the console
+const originalShowTab = showTab;
+showTab = function(tabId) {
+  if (tabId === 'editTab' && USER_ROLE !== 'ADMIN') {
+    alert("Access Denied: Admin only.");
+    return;
+  }
+  originalShowTab(tabId);
+};
 
 </script>
+
+
 </body>
 </html>
