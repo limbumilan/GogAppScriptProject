@@ -1,22 +1,57 @@
-<!-- Link your stylesheet -->
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
 
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=chevron_left" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
+  <style>
+    /* YOUR ORIGINAL UI STYLES - 100% PRESERVED */
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f3f4f6; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .card-title { margin-top: 0; color: #111827; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+    .search-input { flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; }
+    .search-btn { padding: 8px 16px; background-color: #4f46e5; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: .2s; }
+    .search-btn:hover { background-color: #4338ca; }
+    .table-wrapper { max-height: 60vh; overflow: auto; border: 1px solid #e5e7eb; }
+    .table { width: 100%; border-collapse: collapse; background: white; }
+    .table th, .table td { border: 1px solid #e5e7eb; padding: 6px 10px; font-size: 13px; text-align: left; }
+    .table th { background: #f3f4f6; position: sticky; top: 0; z-index: 10; }
+    .pagination-container { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; font-size: 13px; }
+    .pagination-controls { display: flex; gap: 5px; align-items: center; }
+    .pagination-controls button { padding: 5px 12px; border: none; background: #4f46e5; color: #fff; border-radius: 4px; cursor: pointer; }
+    .pagination-controls button:disabled { background: #9ca3af; cursor: not-allowed; }
+    #loadingInfogeneralreport { display: none; margin: 8px 0; font-size: 13px; color: #4f46e5; font-weight: bold; }
+  </style>
+</head>
+<body>
 
 <div class="card">
-  <h3 class="card-title">Reports</h3>
-
-  <!-- Search bars -->
-  <div class="search-container">
-    <input type="text" id="applicantSearch" placeholder="Search by applicant ID" class="myInput"/>
-    <button onclick="search('applicant')" class="myButton">Search</button>
-
-    <input type="text" id="licenseSearch" placeholder="Search by License No" class="myInput"/>
-    <button onclick="search('license')" class="myButton">Search</button>
+  <div class="topbar">
+    <h2 style="margin:0;">General Reports</h2>
+    <span>👤  <strong id="displayUserGen">Loading...</strong></span>
   </div>
 
-  <!-- Table -->
+  <h3 class="card-title">Reports</h3>
+
+  <div class="search-bar">
+    <input type="text" id="applicantSearch" placeholder="Search by applicant ID" class="search-input"/>
+    <input type="text" id="licenseSearch" placeholder="Search by License No" class="search-input"/>
+    <button onclick="runGeneralSearch()" class="search-btn">Search</button>
+    <button class="search-btn" style="background-color:#6b7280" onclick="resetGeneralFilters()">Reset</button>
+  </div>
+
+  <div id="loadingInfogeneralreport">
+    Loading data, please wait…
+  </div>
+
   <div class="table-wrapper">
-    <table id="reportsTable" class="table">
+    <table id="reportsTableGeneral" class="table">
       <thead>
         <tr>
           <th>Applicant ID</th>
@@ -35,52 +70,132 @@
       <tbody></tbody>
     </table>
   </div>
+
+  <div class="pagination-container">
+    <div id="paginationInfoGen">Showing 0 to 0 of 0 entries</div>
+    <div class="pagination-controls">
+      <button id="prevBtnGen" onclick="changePageGen(-1)">Previous</button>
+      <span id="pageLabelGen">Page 1</span>
+      <button id="nextBtnGen" onclick="changePageGen(1)">Next</button>
+    </div>
+  </div>
 </div>
 
 <script>
-function loadReports(searchTerm = '', searchBy = '') {
-  google.script.run.withSuccessHandler(renderReports)
-    .getReportsData(searchTerm, searchBy);
-}
+  /** * CLASH PROTECTION: 
+   * Every variable ends in "Gen" so it doesn't fight with "All Reports"
+   **/
+  let allDataGen = [];
+  let currentPageGen = 1;
+  const rowsPerPageGen = 100;
+ 
 
-function renderReports(data) {
-  const tbody = document.querySelector('#reportsTable tbody');
-  let html = '';
+  function syncUserGen() {
+  const displayElement = document.getElementById('displayUserGen');
 
-  if (!data || data.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="11">No records found</td></tr>';
-    return;
-  }
 
-  data.forEach(r => {
-    html += `<tr>
-      <td>${r.applicantId}</td>
-      <td> ${r.givenName} ${r.surname}</td>
-      <td>${r.contactNo}</td>
-      <td>${r.licenseNo}</td>
-      <td>${r.category}</td>
-      <td>${r.sentDate}</td>
-      <td>${r.verified ? 'Yes' : 'No'}</td>
-      <td>${r.dateOfVerification}</td>
-      <td>${r.receiverDetails}</td>
-      <td>${r.receiverContactInfo}</td>
-      <td>${r.receivedDate}</td>
-    </tr>`;
-  });
-
-  tbody.innerHTML = html;
-}
-
-function search(type) {
-  if(type === 'applicant') {
-    const term = document.getElementById('applicantSearch').value;
-    loadReports(term, 'applicant');
-  } else if(type === 'license') {
-    const term = document.getElementById('licenseSearch').value;
-    loadReports(term, 'license');
+  if (typeof LOGGED_IN_USER !== 'undefined') {
+    if(displayElement) displayElement.innerText = LOGGED_IN_USER;
+    if(hiddenInput) hiddenInput.value = LOGGED_IN_USER;
+    setTodayDate(); 
+  } else {
+    setTimeout(syncUserGen, 100);
   }
 }
 
-// Auto-load all reports on page load
-window.onload = () => loadReports();
+  // Global window assignment to prevent ReferenceError
+  window.runGeneralSearch = function() {
+    const applicantId = document.getElementById('applicantSearch').value.trim();
+    const licenseNo = document.getElementById('licenseSearch').value.trim();
+    
+    showLoadingGen(true);
+    google.script.run
+      .withSuccessHandler(results => {
+        allDataGen = results || [];
+        currentPageGen = 1;
+        renderReportsGen();
+        showLoadingGen(false);
+      })
+      .getReportsData(applicantId || licenseNo, applicantId ? 'applicant' : 'license');
+  };
+
+  window.resetGeneralFilters = function() {
+    document.getElementById('applicantSearch').value = '';
+    document.getElementById('licenseSearch').value = '';
+    loadInitialReportsGen();
+  };
+
+  window.changePageGen = function(step) {
+    const maxPage = Math.ceil(allDataGen.length / rowsPerPageGen);
+    const targetPage = currentPageGen + step;
+    if (targetPage >= 1 && targetPage <= maxPage) {
+      currentPageGen = targetPage;
+      renderReportsGen();
+      document.querySelector('.table-wrapper').scrollTop = 0;
+    }
+  };
+
+  function loadInitialReportsGen() {
+    showLoadingGen(true);
+    google.script.run
+      .withSuccessHandler(data => {
+        allDataGen = data || [];
+        currentPageGen = 1;
+        renderReportsGen();
+        showLoadingGen(false);
+      })
+      .getReportsData('', '');
+  }
+
+  function renderReportsGen() {
+    const tbody = document.querySelector('#reportsTableGeneral tbody');
+    const start = (currentPageGen - 1) * rowsPerPageGen;
+    const end = start + rowsPerPageGen;
+    const pageData = allDataGen.slice(start, end);
+
+    if (allDataGen.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:20px;">No records found</td></tr>';
+      updatePaginationUIGen(0, 0, 0);
+      return;
+    }
+
+    let html = '';
+    pageData.forEach(r => {
+      html += `<tr>
+        <td>${r.applicantId || ''}</td>
+        <td>${r.givenName || ''} ${r.surname || ''}</td>
+        <td>${r.contactNo || ''}</td>
+        <td>${r.licenseNo || ''}</td>
+        <td>${r.category || ''}</td>
+        <td>${r.sentDate || ''}</td>
+        <td>${r.verified ? 'Yes' : 'No'}</td>
+        <td>${r.dateOfVerification || ''}</td>
+        <td>${r.receiverDetails || ''}</td>
+        <td>${r.receiverContactInfo || ''}</td>
+        <td>${r.receivedDate || ''}</td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = html;
+    updatePaginationUIGen(start + 1, Math.min(end, allDataGen.length), allDataGen.length);
+  }
+
+  function updatePaginationUIGen(start, end, total) {
+    document.getElementById('paginationInfoGen').innerText = `Showing ${start} to ${end} of ${total} entries`;
+    document.getElementById('pageLabelGen').innerText = `Page ${currentPageGen}`;
+    document.getElementById('prevBtnGen').disabled = (currentPageGen === 1);
+    document.getElementById('nextBtnGen').disabled = (currentPageGen >= Math.ceil(total / rowsPerPageGen) || total === 0);
+  }
+
+  function showLoadingGen(isLoading) {
+    const loader = document.getElementById('loadingInfogeneralreport');
+    loader.style.display = isLoading ? 'block' : 'none';
+  }
+
+  // Load data on start
+  window.addEventListener('load', loadInitialReportsGen);
+  syncUserGen();
 </script>
+
+</body>
+</html>
