@@ -1,0 +1,117 @@
+<!-- =========================
+     EDIT FORM (edit.html)
+========================= -->
+
+<div class="topbar">
+  <h2>Edit Application Record</h2>
+  <span>👤 Admin</span>
+</div>
+
+<!-- Search bar -->
+<div class="search-bar">
+  <input type="text" id="searchApplicantIdEdit" placeholder="Search by Applicant ID" class="search-input">
+  <button class="search-btn" onclick="searchExistingEdit('applicant')">Search</button>
+
+  <input type="text" id="searchLicenseNoEdit" placeholder="Search by License No" class="search-input">
+  <button class="search-btn" onclick="searchExistingEdit('license')">Search</button>
+</div>
+
+<!-- Search results table -->
+<table id="searchResultsEdit" class="search-results">
+  <thead>
+    <tr>
+      <th>Applicant ID</th>
+      <th>Surname</th>
+      <th>Given Name</th>
+      <th>License No</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<!-- Form container -->
+<div id="editFormContainer" class="addnew-form-container">
+  <form id="editForm">
+
+    <!-- ALL fields editable -->
+    <fieldset class="fieldset-editable">
+      <legend>Application Info</legend>
+      <label>Applicant ID:<input type="text" name="applicantID" class="form-input"></label>
+      <label>Surname:<input type="text" name="surname" class="form-input"></label>
+      <label>Given Name:<input type="text" name="givenName" class="form-input"></label>
+      <label>Contact No:<input type="text" name="contactNo" class="form-input"></label>
+      <label>Driving License No:<input type="text" name="licenseNo" class="form-input"></label>
+      <label>Category:<input type="text" name="category" class="form-input"></label>
+      <label>Sent Date:<input type="date" name="sentDate" class="form-input"></label>
+      <label>Verified:<input type="text" name="verified" class="form-input"></label>
+      <label>Date of Verification:<input type="date" name="dateOfVerification" class="form-input"></label>
+      <label>Comments:<textarea name="comments" rows="2" class="form-input"></textarea></label>
+      <label>Receiver Details:<input type="text" name="receiverDetails" class="form-input"></label>
+      <label>Receiver Contact Info:<input type="text" name="receiverContact" class="form-input"></label>
+      <label>Received:<input type="date" name="receivedDate" class="form-input"></label>
+    </fieldset>
+
+    <!-- Save button -->
+    <div class="form-actions">
+      <button type="button" onclick="submitEdit()">Save Changes</button>
+    </div>
+  </form>
+</div>
+
+<style>
+/* reuse addnew styles */
+<?!= include('stylesheet') ?>
+</style>
+
+<script>
+function searchExistingEdit(by) {
+  const term = by==='applicant'?document.getElementById('searchApplicantIdEdit').value.trim():
+                                  document.getElementById('searchLicenseNoEdit').value.trim();
+  if(!term) return alert('Enter a search term');
+  google.script.run
+    .withSuccessHandler(showSearchResultsEdit)
+    .getReportsData(term, by);
+}
+
+function showSearchResultsEdit(results){
+  const table=document.getElementById('searchResultsEdit');
+  const tbody=table.querySelector('tbody');
+  tbody.innerHTML='';
+  if(!results || results.length===0){table.style.display='none'; return alert('No records found');}
+  results.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.applicantId}</td><td>${r.surname}</td><td>${r.givenName}</td><td>${r.licenseNo}</td>`;
+    tr.addEventListener('click',()=>fillEditForm(r));
+    tbody.appendChild(tr);
+  });
+  table.style.display='table';
+}
+
+function fillEditForm(data){
+  const form=document.getElementById('editForm');
+  form.applicantID.value=data.applicantId;
+  form.surname.value=data.surname;
+  form.givenName.value=data.givenName;
+  form.contactNo.value=data.contactNo;
+  form.licenseNo.value=data.licenseNo;
+  form.category.value=data.category;
+
+  form.sentDate.value=data.sentDate||'';
+  form.verified.value=data.verified?'TRUE':'FALSE';
+  form.dateOfVerification.value=data.dateOfVerification||'';
+  form.comments.value=data.comments||'';
+  form.receiverDetails.value=data.receiverDetails||'';
+  form.receiverContact.value=data.receiverContactInfo||'';
+  form.receivedDate.value=data.receivedDate||'';
+  document.getElementById('searchResultsEdit').style.display='none';
+}
+
+function submitEdit(){
+  const form=document.getElementById('editForm');
+  const formData=Object.fromEntries(new FormData(form).entries());
+  google.script.run
+    .withSuccessHandler(()=>{alert('Record updated successfully!'); form.reset();})
+    .withFailureHandler(err=>{alert('Error updating record:\n'+err.message);})
+    .saveEditedRecord(formData);
+}
+</script>
