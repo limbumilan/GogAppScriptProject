@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>All Reports</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    /* YOUR ORIGINAL UI STYLES - 100% PRESERVED */
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+    .search-bar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px}
+    .search-input{flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
+    .search-btn{padding:8px 16px;background-color:#4f46e5;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;transition:.2s}
+    .search-btn:hover{background-color:#4338ca}
+    .export-buttons{display:flex;gap:10px;margin-bottom:10px}
+    .export-buttons button{background:#10b981;color:#fff;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-weight:600}
+    .export-buttons button:hover{background:#059669}
+    .rows-per-page{margin-left:auto}
+    .table-wrapper{max-height:60vh;overflow:auto}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border:1px solid #e5e7eb;padding:6px 10px;font-size:13px;text-align:left}
+    .table th{background:#f3f4f6; position: sticky; top: 0;}
+    .pagination-controls{display:flex;justify-content:center;gap:5px;margin-top:5px;flex-wrap:wrap}
+    .pagination-controls button{padding:5px 10px;border:none;background:#4f46e5;color:#fff;border-radius:4px;cursor:pointer}
+    .pagination-controls button.active{background:#4338ca;font-weight:600}
+    .pagination-controls button:hover{background:#4338ca}
+    .pagination-info{margin-top:5px;font-size:13px;color:#374151;text-align:right}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h2>All Reports</h2>
+  <span>👤 Admin</span>
+</div>
+
+<div class="search-bar">
+  <input type="date" id="fromDate" class="search-input" placeholder="From">
+  <input type="date" id="toDate" class="search-input" placeholder="To">
+  <select id="verifiedStatus" class="search-input">
+    <option value="">All</option>
+    <option value="true">Verified</option>
+    <option value="false">Unverified</option>
+  </select>
+  <input type="text" id="searchApplicant" placeholder="Search by Applicant ID" class="search-input">
+  <input type="text" id="searchLicense" placeholder="Search by License No" class="search-input">
+  <button class="search-btn" onclick="applyAllFilters()">Filter</button>
+  <button class="search-btn" onclick="resetFiltersallreport()">Reset</button>
+</div>
+
+<div class="export-buttons">
+  <button onclick="exportToExcel()">Export to Excel</button>
+  <button onclick="exportToPDF()">Export to PDF</button>
+  <button onclick="window.print()">Print</button>
+
+  <select id="rowsPerPageSelect" class="rows-per-page" onchange="changeRowsPerPage()">
+    
+    <option value="50">50 rows</option>
+    <option value="100">100 rows</option>
+    <option value="200">200 rows</option>
+    <option value="500">500 rows</option>
+    <option value="1000">1000 rows</option>
+    <option value="2000">2000 rows</option>
+  </select>
+</div>
+
+<div id="loadingInfo" style="display:none;margin:8px 0;font-size:13px;color:#6b7280;">
+  Loading data, please wait…
+</div>
+
+<div class="table-wrapper">
+  <table id="reportsTable" class="table">
+    <thead>
+      <tr>
+        <th>Applicant ID</th>
+        <th>Name</th>
+        <th>Contact No</th>
+        <th>License No</th>
+        <th>Category</th>
+        <th>Sent Date</th>
+        <th>Verified</th>
+        <th>Verification Date</th>
+        <th>Receiver Details</th>
+        <th>Receiver Contact</th>
+        <th>Received Date</th>
+      </tr>
+    </thead>
+    <tbody id="resultsContainer"></tbody>
+  </table>
+</div>
+
+<div class="pagination-controls" id="pageNumbers"></div>
+<div class="pagination-info" id="paginationInfo"></div>
+
+<script>
+/* LOGIC PROTECTION:
+   These functions use the global 'allData' variable which is updated 
+   EVERY time you click the "Filter" button. 
+*/
+
+var allData = []; // This holds only your current FILTERED results
+var currentPage = 1;
+var rowsPerPage = 500;
+
+window.applyAllFilters = function() { fetchAllReportData(); };
+
+window.resetFiltersallreport = function() {
+  ['fromDate','toDate','verifiedStatus','searchApplicant','searchLicense'].forEach(id => document.getElementById(id).value = '');
+  fetchAllReportData();
+};
+
+window.changeRowsPerPage = function() {
+  rowsPerPage = parseInt(document.getElementById('rowsPerPageSelect').value);
+  currentPage = 1;
+  renderPage();
+};
+
+function fetchAllReportData() {
+  document.getElementById('loadingInfo').style.display = 'block';
+
+  const filters = {
+    fromDate: document.getElementById('fromDate').value,
+    toDate: document.getElementById('toDate').value,
+    verifiedStatus: document.getElementById('verifiedStatus').value,
+    applicantId: document.getElementById('searchApplicant').value,
+    licenseNo: document.getElementById('searchLicense').value
+  };
+
+  google.script.run
+    .withSuccessHandler(data => {
+      document.getElementById('loadingInfo').style.display = 'none';
+      allData = data || []; // The server returns data based on your filters
+      currentPage = 1;
+      renderPage();
+    })
+    .withFailureHandler(err => {
+      document.getElementById('loadingInfo').style.display = 'none';
+      alert("Error: " + err.message);
+    })
+    .getAllReportData(filters);
+}
+
+function renderPage() {
+  const tbody = document.getElementById('resultsContainer');
+  tbody.innerHTML = '';
+
+  if(!allData || allData.length === 0){
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;">No records found.</td></tr>';
+    return;
+  }
+
+  const startIdx = (currentPage - 1) * rowsPerPage;
+  const endIdx = Math.min(startIdx + rowsPerPage, allData.length);
+  const pageData = allData.slice(startIdx, endIdx);
+
+  let rowsHtml = ''; 
+  pageData.forEach(r => {
+    const fullName = (r.GIVEN_NAME || '') + ' ' + (r.SURNAME || '');
+    const isVerified = (r.VERIFIED === true || String(r.VERIFIED).toUpperCase() === 'TRUE');
+    
+    rowsHtml += '<tr>' +
+      '<td>' + (r.applicant_ID || '') + '</td>' +
+      '<td>' + fullName + '</td>' +
+      '<td>' + (r.CONTACT_NO || '') + '</td>' +
+      '<td>' + (r.DRIVING_LICENSE_NO || '') + '</td>' +
+      '<td>' + (r.CATEGORY || '') + '</td>' +
+      '<td>' + (r.SENT_DATE || '') + '</td>' +
+      '<td><b style="color:' + (isVerified ? 'green' : 'red') + '">' + (isVerified ? 'Yes' : 'No') + '</b></td>' +
+      '<td>' + (r.DATE_OF_VERIFICATION || '') + '</td>' +
+      '<td>' + (r.Reciever_details || '') + '</td>' +
+      '<td>' + (r.reciever_contact_info || '') + '</td>' +
+      '<td>' + (r.recieved || '') + '</td>' +
+    '</tr>';
+  });
+
+  tbody.innerHTML = rowsHtml;
+  document.getElementById('paginationInfo').textContent = 'Showing ' + (startIdx+1) + '-' + endIdx + ' of ' + allData.length;
+  renderPageNumbers();
+}
+
+function renderPageNumbers() {
+  const container = document.getElementById('pageNumbers');
+  const totalPages = Math.ceil(allData.length / rowsPerPage);
+  container.innerHTML = '';
+  for(let i=1; i<=totalPages; i++){
+    const btn = document.createElement('button');
+    btn.textContent = i;
+    if(i === currentPage) btn.classList.add('active');
+    btn.onclick = function(){ currentPage = i; renderPage(); };
+    container.appendChild(btn);
+  }
+}
+
+/* EXPORT FILTERED DATA ONLY */
+
+window.exportToExcel = function() {
+  if (!allData || allData.length === 0) return alert("No filtered data to export.");
+  
+  // This uses 'allData', which is currently whatever is in your table after filtering
+  const ws_data = [["Applicant ID","Name","Contact No","License No","Category","Sent Date","Verified","Verification Date","Receiver Details","Receiver Contact","Received Date"]];
+  
+  allData.forEach(r => {
+    const isVerified = (r.VERIFIED === true || String(r.VERIFIED).toUpperCase() === 'TRUE') ? "Yes" : "No";
+    ws_data.push([
+      r.applicant_ID || '', 
+      (r.GIVEN_NAME || '') + ' ' + (r.SURNAME || ''), 
+      r.CONTACT_NO || '', 
+      r.DRIVING_LICENSE_NO || '', 
+      r.CATEGORY || '', 
+      r.SENT_DATE || '', 
+      isVerified, 
+      r.DATE_OF_VERIFICATION || '', 
+      r.Reciever_details || '', 
+      r.reciever_contact_info || '', 
+      r.recieved || ''
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(ws_data);
+  XLSX.utils.book_append_sheet(wb, ws, "Filtered Reports");
+  XLSX.writeFile(wb, "Filtered_Report_" + new Date().getTime() + ".xlsx");
+};
+
+window.exportToPDF = function() {
+  if (!allData || allData.length === 0) return alert("No filtered data to export.");
+  
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('l', 'pt', 'a4');
+  
+  const tableData = allData.map(r => [
+    r.applicant_ID || '', 
+    (r.GIVEN_NAME || '') + ' ' + (r.SURNAME || ''), 
+    r.CONTACT_NO || '', 
+    r.DRIVING_LICENSE_NO || '', 
+    r.CATEGORY || '', 
+    r.SENT_DATE || '', 
+    (r.VERIFIED === true || String(r.VERIFIED).toUpperCase() === 'TRUE') ? "Yes" : "No", 
+    r.DATE_OF_VERIFICATION || '', 
+    r.Reciever_details || '', 
+    r.reciever_contact_info || '', 
+    r.recieved || ''
+  ]);
+
+  doc.autoTable({ 
+    head: [["ID","Name","Contact","License","Cat","Sent","Ver","V-Date","Recv","R-Cont","R-Date"]], 
+    body: tableData,
+    theme: 'grid',
+    styles: { fontSize: 7 }
+  });
+  doc.save("Filtered_Report.pdf");
+};
+
+document.addEventListener('DOMContentLoaded', fetchAllReportData);
+</script>
+</body>
+</html>
