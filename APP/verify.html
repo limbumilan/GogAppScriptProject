@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <title>Verify Application</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9fafb; margin: 20px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+    h2 { margin: 0; color: #4f46e5; }
+    .search-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+    .search-input { flex: 1; padding: 8px 12px; border-radius: 6px; font-size: 14px; border: 1px solid #d1d5db; background: #fff; }
+    .search-btn { padding: 8px 16px; background: #4f46e5; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    .search-btn:hover { background: #4338ca; }
+    .search-results { width: 100%; border-collapse: collapse; margin-bottom: 15px; display: none; }
+    .search-results th, .search-results td { border: 1px solid #e5e7eb; padding: 6px 10px; font-size: 13px; text-align: left; }
+    .search-results tbody tr:hover { background: #e0e7ff; cursor: pointer; }
+
+    .addnew-form-container { background: #fff; border-radius: 12px; padding: 15px 20px; box-shadow: 0 4px 12px rgba(0,0,0,.08); max-height: calc(100vh - 150px); overflow-y: auto; }
+
+    fieldset { border: none; padding: 0; margin-bottom: 15px; }
+    legend { font-size: 16px; font-weight: 600; color: #4f46e5; margin-bottom: 8px; }
+    label { display: flex; flex-direction: column; font-size: 14px; font-weight: 500; margin-bottom: 10px; color: #374151; }
+    .form-input, select, textarea { padding: 8px 10px; border-radius: 6px; font-size: 14px; width: 100%; box-sizing: border-box; }
+    .form-input:focus, select:focus, textarea:focus { border-color: #4f46e5; outline: none; background: #fff; }
+
+    .fieldset-disabled { opacity: .95; }
+    .fieldset-disabled .form-input { border: none; background: transparent; padding: 2px 0; pointer-events: none; font-weight: 600; color: #111827; }
+
+    .fieldset-editable { background: #f3f4f6; padding: 12px 15px; border-radius: 10px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .form-actions { display: flex; justify-content: flex-end; }
+    .form-actions button { background: #4f46e5; color: #fff; padding: 8px 18px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .form-actions button:hover { background: #4338ca; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h2>Verify Printed License</h2>
+  <span>👤 <strong id="displayUserverify">Loading...</strong></span>
+</div>
+
+<!-- Search bar -->
+<div class="search-bar">
+  <input type="text" id="searchApplicantIdverify" placeholder="Search by Applicant ID" class="search-input">
+  <input type="text" id="searchLicenseNoverify" placeholder="Search by License No" class="search-input">
+  <button class="search-btn" onclick="searchExisting()">Search</button>
+  <button class="search-btn" onclick="resetFiltersverify()">Reset</button>
+</div>
+
+<!-- Search results -->
+<table id="searchResults" class="search-results">
+  <thead>
+    <tr><th>Applicant ID</th><th>Name</th><th>License No</th></tr>
+  </thead>
+  <tbody id="forverify"></tbody>
+</table>
+
+<!-- Form -->
+<div class="addnew-form-container">
+  <form id="verifyForm">
+    <input type="hidden" name="verifiedBy"  id="verify_enteredBy">
+    <input type="hidden" name="verificationTimestamp">
+
+    <!-- Application Info (View-only) -->
+    <fieldset class="fieldset-disabled">
+      <legend>Application Info</legend>
+      <div class="form-row">
+        <label>Applicant ID<input type="text" name="applicantID" class="form-input" readonly></label>
+        <label>Full Name<input type="text" name="fullName" class="form-input" readonly></label>
+      </div>
+      <div class="form-row">
+        <label>Contact No<input type="text" name="contactNo" class="form-input" readonly></label>
+        <label>Driving License No<input type="text" name="licenseNo" class="form-input" readonly></label>
+      </div>
+      <div class="form-row">
+        <label>Category<input type="text" name="category" class="form-input" readonly></label>
+        <label>Sent Date<input type="date" name="sentDate" class="form-input" readonly></label>
+      </div>
+    </fieldset>
+
+    <!-- Verification -->
+    <fieldset class="fieldset-editable">
+      <legend>Verification</legend>
+      <div class="form-row">
+        <label>Verified
+          <select name="verified" class="form-input">
+            <option value="">Select</option>
+            <option value="TRUE">TRUE</option>
+            <option value="FALSE">FALSE</option>
+          </select>
+        </label>
+        <label>Date of Verification<input type="date" name="dateOfVerification" class="form-input"></label>
+      </div>
+      <label>Comments<textarea name="comments" rows="2" class="form-input"></textarea></label>
+    </fieldset>
+
+    <!-- Verify button -->
+    <div class="form-actions">
+      <button type="button" onclick="verifyApplication()">Verify</button>
+    </div>
+  </form>
+</div>
+
+
+<script>
+let isAlreadyVerified = false; // Global flag to track state
+
+function searchExisting() {
+  const applicantId = document.getElementById('searchApplicantIdverify').value.trim();
+  const licenseNo = document.getElementById('searchLicenseNoverify').value.trim();
+  if(!applicantId && !licenseNo) return alert('Enter Applicant ID or License No');
+
+  let term = applicantId || licenseNo;
+  let by = applicantId ? 'applicant' : 'license';
+
+  google.script.run
+    .withSuccessHandler(showSearchResults)
+    .getReportsDataverify(term, by);
+}
+
+function showSearchResults(results) {
+  const table = document.getElementById('searchResults');
+  const tbody = document.getElementById('forverify');
+  tbody.innerHTML = '';
+  if(!results || results.length === 0){ table.style.display='none'; return alert('No records found'); }
+
+  results.forEach(r => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.applicantId}</td><td>${r.surname} ${r.givenName}</td><td>${r.licenseNo}</td>`;
+    tr.onclick = () => fillForm(r);
+    tbody.appendChild(tr);
+  });
+  table.style.display = 'table';
+}
+
+function fillForm(data) {
+  const f = document.getElementById('verifyForm');
+  const verifyBtn = document.querySelector('.form-actions button');
+  
+  f.applicantID.value = data.applicantId || '';
+  f.fullName.value = `${(data.surname||'')} ${(data.givenName||'')}`.trim();
+  f.contactNo.value = data.contactNo || '';
+  f.licenseNo.value = data.licenseNo || '';
+  f.category.value = data.category || '';
+  f.sentDate.value = data.sentDate || '';
+
+  isAlreadyVerified = (String(data.verified).toUpperCase() === "TRUE");
+  
+  f.verified.value = isAlreadyVerified ? 'TRUE' : '';
+  f.dateOfVerification.value = data.dateOfVerification || '';
+  f.comments.value = data.comments || '';
+  document.getElementById('searchResults').style.display = 'none';
+
+  // --- BLOCKING LOGIC ---
+  if(isAlreadyVerified){
+    alert(`🛑 BLOCK: This application was already verified on ${data.dateOfVerification||'unknown date'} by ${data.verifiedBy||'unknown user'}.`);
+    verifyBtn.disabled = true;
+    verifyBtn.innerText = "Already Verified";
+    verifyBtn.style.background = "#9ca3af"; // Gray color
+  } else {
+    verifyBtn.disabled = false;
+    verifyBtn.innerText = "Verify";
+    verifyBtn.style.background = "#4f46e5"; // Primary color
+  }
+}
+
+
+
+function verifyApplication() {
+  const form = document.getElementById('verifyForm');
+  const verifyBtn = document.querySelector('.form-actions button');
+
+  // 1. Initial Logic Checks
+  if(isAlreadyVerified) {
+    return alert("Cannot update: This application is already verified and locked.");
+  }
+  if(!form.verified.value) return alert('Please select verification status');
+
+  // 2. Prepare Confirmation Message
+  const applicantName = form.fullName.value;
+  const status = form.verified.value;
+  const msg = `Please confirm the following details:\n\n` +
+              `Applicant: ${applicantName}\n` +
+              `Status: ${status}\n\n` +
+              `Once verified, this record will be LOCKED. Do you want to proceed?`;
+
+  // 3. Trigger Confirmation Dialog
+  if (!confirm(msg)) {
+    return; // Stop if user clicks 'Cancel'
+  }
+
+  // 4. Proceed with Saving
+  if(!form.dateOfVerification.value) {
+    form.dateOfVerification.value = new Date().toISOString().slice(0,10);
+  }
+  form.verificationTimestamp.value = new Date().toISOString();
+
+  // Visual feedback
+  verifyBtn.disabled = true;
+  verifyBtn.innerText = "Processing...";
+
+  const data = Object.fromEntries(new FormData(form).entries());
+
+  google.script.run
+    .withSuccessHandler(() => {
+      alert('Application verified and locked successfully.');
+      resetFiltersverify();
+    })
+    .withFailureHandler(e => {
+      alert('Verification failed:\n' + e.message);
+      verifyBtn.disabled = false;
+      verifyBtn.innerText = "Verify";
+    })
+    .verifyApplication(data);
+}
+
+
+
+
+
+
+
+
+
+
+function resetFiltersverify() {
+  const appIdInput = document.getElementById('searchApplicantIdverify');
+  const licNoInput = document.getElementById('searchLicenseNoverify');
+  if (appIdInput) appIdInput.value = '';
+  if (licNoInput) licNoInput.value = '';
+
+  const resultsTable = document.getElementById('searchResults');
+  if (resultsTable) resultsTable.style.display = 'none';
+
+  const verifyForm = document.getElementById('verifyForm');
+  if (verifyForm) {
+    verifyForm.reset();
+    isAlreadyVerified = false; // Reset global flag
+    
+    // Restore button state
+    const verifyBtn = document.querySelector('.form-actions button');
+    if(verifyBtn) {
+      verifyBtn.disabled = false;
+      verifyBtn.innerText = "Verify";
+      verifyBtn.style.background = "#4f46e5";
+    }
+
+    // Re-sync user session
+    syncUserFromDashboard();
+  }
+
+  const tbody = document.getElementById('forverify');
+  if (tbody) tbody.innerHTML = '';
+}
+
+
+
+
+function syncUserFromDashboard() {
+  const displayElement = document.getElementById('displayUserverify');
+  const hiddenInput = document.getElementById('verify_enteredBy');
+
+  if (typeof LOGGED_IN_USER !== 'undefined') {
+    if(displayElement) displayElement.innerText = LOGGED_IN_USER;
+    if(hiddenInput) hiddenInput.value = LOGGED_IN_USER;
+    setTodayDate(); 
+  } else {
+    setTimeout(syncUserFromDashboard, 100);
+  }
+}
+
+
+
+
+syncUserFromDashboard();
+</script>
+
+
+
+
+</body>
+</html>
